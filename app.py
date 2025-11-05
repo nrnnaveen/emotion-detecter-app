@@ -1,44 +1,38 @@
-import streamlit as st
 import cv2
-from deepface import DeepFace
-import numpy as np
+from fer import FER
 
-st.set_page_config(page_title="Emotion Detection App", layout="wide")
-st.title("😊 Real-Time Emotion Detection App")
-st.markdown("Detect your emotions live using your webcam!")
+# Initialize the emotion detector
+detector = FER()
 
-# Start/stop camera
-run = st.checkbox("Start Webcam")
-FRAME_WINDOW = st.image([])
+# Start video capture from the webcam
+cap = cv2.VideoCapture(0)
 
-# Initialize camera
-camera = cv2.VideoCapture(0)
+while True:
+    # Capture frame-by-frame
+    ret, frame = cap.read()
+    
+    # Use the FER library to detect emotions
+    emotions = detector.detect_emotions(frame)
 
-while run:
-    ret, frame = camera.read()
-    if not ret:
-        st.error("Failed to access webcam.")
+    # Draw rectangles and labels for each detected face and their emotions
+    for emotion in emotions:
+        (x, y, w, h) = emotion["box"]
+        cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
+        
+        # Get the dominant emotion
+        dominant_emotion = emotion["emotions"]
+        emotion_name = max(dominant_emotion, key=dominant_emotion.get)
+        
+        # Display the emotion name
+        cv2.putText(frame, emotion_name, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+
+    # Display the resulting frame
+    cv2.imshow('Emotion Detection', frame)
+
+    # Break the loop if 'q' is pressed
+    if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
-    # Flip frame for selfie view
-    frame = cv2.flip(frame, 1)
-
-    try:
-        # Detect emotion
-        result = DeepFace.analyze(frame, actions=['emotion'], enforce_detection=False)
-        dominant_emotion = result[0]['dominant_emotion']
-
-        # Draw emotion text
-        cv2.putText(frame, f"Emotion: {dominant_emotion}",
-                    (30, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-
-    except Exception as e:
-        cv2.putText(frame, "Detecting...", (30, 50),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-
-    # Display the frame
-    FRAME_WINDOW.image(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-
-else:
-    st.write("✅ Click the checkbox to start the webcam.")
-    camera.release()
+# Release the capture and close any open windows
+cap.release()
+cv2.destroyAllWindows()
