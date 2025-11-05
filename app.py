@@ -1,26 +1,44 @@
 import streamlit as st
+import cv2
 from deepface import DeepFace
-import matplotlib.pyplot as plt
+import numpy as np
 
-st.set_page_config(page_title="Emotion AI – The Human Mood Analyzer", layout="wide")
+st.set_page_config(page_title="Emotion Detection App", layout="wide")
+st.title("😊 Real-Time Emotion Detection App")
+st.markdown("Detect your emotions live using your webcam!")
 
-st.title("🧠 Emotion AI – The Human Mood Analyzer")
-st.write("Upload an image to analyze emotions using AI.")
+# Start/stop camera
+run = st.checkbox("Start Webcam")
+FRAME_WINDOW = st.image([])
 
-uploaded_file = st.file_uploader("📸 Upload a Face Image", type=["jpg", "jpeg", "png"])
+# Initialize camera
+camera = cv2.VideoCapture(0)
 
-if uploaded_file is not None:
-    st.image(uploaded_file, caption="Uploaded Image", use_column_width=True)
-    with st.spinner("Analyzing emotions..."):
-        result = DeepFace.analyze(uploaded_file, actions=['emotion'], enforce_detection=False)
-    st.success("✅ Emotion Analysis Complete!")
+while run:
+    ret, frame = camera.read()
+    if not ret:
+        st.error("Failed to access webcam.")
+        break
 
-    dominant_emotion = result[0]['dominant_emotion']
-    st.subheader(f"Detected Emotion: **{dominant_emotion.upper()}**")
+    # Flip frame for selfie view
+    frame = cv2.flip(frame, 1)
 
-    emotions = result[0]['emotion']
-    fig, ax = plt.subplots()
-    ax.bar(emotions.keys(), emotions.values())
-    ax.set_ylabel("Confidence (%)")
-    ax.set_title("Emotion Distribution")
-    st.pyplot(fig)
+    try:
+        # Detect emotion
+        result = DeepFace.analyze(frame, actions=['emotion'], enforce_detection=False)
+        dominant_emotion = result[0]['dominant_emotion']
+
+        # Draw emotion text
+        cv2.putText(frame, f"Emotion: {dominant_emotion}",
+                    (30, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+
+    except Exception as e:
+        cv2.putText(frame, "Detecting...", (30, 50),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+
+    # Display the frame
+    FRAME_WINDOW.image(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+
+else:
+    st.write("✅ Click the checkbox to start the webcam.")
+    camera.release()
