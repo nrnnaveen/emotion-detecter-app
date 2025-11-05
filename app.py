@@ -1,5 +1,5 @@
 import streamlit as st
-import cv2
+from opencv-python import cv2
 from deepface import DeepFace
 import matplotlib.pyplot as plt
 import pandas as pd
